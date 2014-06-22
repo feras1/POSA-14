@@ -148,36 +148,52 @@ public class DownloadActivity extends Activity {
      *        handleMessage() hook method to process Messages sent to
      *        it from the DownloadService.
      */
-    private class DownloadHandler extends Handler {
+    private static class DownloadHandler extends Handler {
         /**
-        /**
-         * This hook method is dispatched in response to receiving
-         * the pathname back from the DownloadService.
+         * Allows Activity to be garbage collected properly.
          */
-        public void handleMessage(Message msg) {
-            // Extract the data from Message, which is in the form
-            // of a Bundle that can be passed across processes.
-            Bundle data = msg.getData();
+        private WeakReference<DownloadActivity> mActivity;
 
-            // Extract the pathname from the Bundle.
-            String pathname = data.getString("PATHNAME");
+        /**
+         * Class constructor constructs mActivity as weak reference
+         * to the activity
+         * 
+         * @param activity
+         *            The corresponding activity
+         */
+        public DownloadHandler(DownloadActivity activity) {
+            mActivity = new WeakReference<DownloadActivity>(activity);
+        }
+
+        /**
+         * This hook method is dispatched in response to receiving the
+         * pathname back from the DownloadService.
+         */
+        public void handleMessage(Message message) {
+            DownloadActivity activity = mActivity.get();
+            // Bail out if the DownloadActivity is gone.
+            if (activity == null)
+                return;
+
+            // Try to extract the pathname from the message.
+            String pathname = DownloadService.getPathname(message);
                 
-            // See if things worked or not.
-            if (msg.arg1 != RESULT_OK || pathname == null)
-                showDialog("failed download");
+            // See if the download worked or not.
+            if (pathname == null)
+                activity.showDialog("failed download");
 
             // Stop displaying the progress dialog.
-            dismissDialog();
+            activity.dismissDialog();
 
             // Display the image in the UI Thread.
-            displayImage(BitmapFactory.decodeFile(pathname));
+            activity.displayImage(BitmapFactory.decodeFile(pathname));
         }
     };
 
     /**
      * Instance of DownloadHandler.
      */
-    Handler downloadHandler = new DownloadHandler();
+    Handler downloadHandler = new DownloadHandler(this);
 
     /**
      * Display the Dialog to the User.
